@@ -44,13 +44,13 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ env.APP_NAME }}:${{ env.BRANCH_NAME }} .
-        working-directory: ./${{ env.WORKING_DIR }}
+          docker build -t ${{ inputs.APP_NAME }}:${{ inputs.BRANCH_NAME }} .
+        working-directory: ./${{ inputs.WORKING_DIR }}
 
       - name: Tag Docker image
         run: |
-          docker tag ${{ env.APP_NAME }}:${{ env.BRANCH_NAME }} ghcr.io/${{ github.repository }}/${{ env.APP_NAME }}:${{ env.BRANCH_NAME }}
+          docker tag ${{ inputs.APP_NAME }}:${{ inputs.BRANCH_NAME }} ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ inputs.BRANCH_NAME }}
 
       - name: Push Docker image to GitHub Packages
         run: |
-          docker push ghcr.io/${{ github.repository }}/${{ env.APP_NAME }}:${{ env.BRANCH_NAME }}
+          docker push ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ inputs.BRANCH_NAME }}
