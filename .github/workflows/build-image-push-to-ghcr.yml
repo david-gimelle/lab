@@ -6,9 +6,6 @@ on:
       APP_NAME:
         required: true
         type: string
-      BRANCH_NAME:
-        required: true
-        type: string
       WORKING_DIR:
         required: true
         type: string
@@ -20,18 +17,35 @@ jobs:
   build-image-push:
     runs-on: ubuntu-latest
 
+    env:
+      BRANCH_NAME: ""
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Log in to GitHub Docker registry
-      run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      
-    - name: Build Docker image
-      run: |
-        docker build -t ${{ inputs.APP_NAME }}:${{ inputs.BRANCH_NAME }} .
-      working-directory: ./${{ inputs.WORKING_DIR }}
+      - name: Call composite action to extract branch name
+        id: extract-branch-name
+        uses: david-gimelle/lab/.github/actions/extract-branch-name@main
 
-    - name: Push Docker image to GitHub Packages
-      run: |
-        docker push ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ inputs.BRANCH_NAME }}
+      - name: Set branch name from composite action
+        run: echo "BRANCH_NAME=${{ steps.extract-branch-name.outputs.branch_name }}" >> $GITHUB_ENV
+
+      - name: Display branch name from composite action
+        run: echo "Branch name is ${{ env.BRANCH_NAME }}"
+
+      - name: Log in to GitHub Docker registry
+        run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.APP_NAME }}:${{ env.BRANCH_NAME }} .
+        working-directory: ./${{ env.WORKING_DIR }}
+
+      - name: Tag Docker image
+        run: |
+          docker tag ${{ env.APP_NAME }}:${{ env.BRANCH_NAME }} ghcr.io/${{ github.repository }}/${{ env.APP_NAME }}:${{ env.BRANCH_NAME }}
+
+      - name: Push Docker image to GitHub Packages
+        run: |
+          docker push ghcr.io/${{ github.repository }}/${{ env.APP_NAME }}:${{ env.BRANCH_NAME }}
