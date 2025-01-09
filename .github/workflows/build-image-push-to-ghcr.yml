@@ -34,6 +34,11 @@ jobs:
       - name: Display branch name from composite action
         run: echo "Branch name is ${{ env.BRANCH_NAME }}"
 
+      - name: Display APP_NAME and WORKING_DIR
+        run: |
+          echo "APP_NAME: ${{ inputs.APP_NAME }}"
+          echo "WORKING_DIR: ${{ inputs.WORKING_DIR }}"
+
       - name: Log in to GitHub Docker registry
         run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
