@@ -1,0 +1,37 @@
+name: Build Docker Image then push to GitHub Packages
+
+on:
+  workflow_call:
+    inputs:
+      APP_NAME:
+        required: true
+        type: string
+      BRANCH_NAME:
+        required: true
+        type: string
+      WORKING_DIR:
+        required: true
+        type: string
+    secrets:
+      GHCR_PAT:
+        required: true
+
+jobs:
+  build-image-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Log in to GitHub Docker registry
+      run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ inputs.APP_NAME }}:${{ inputs.BRANCH_NAME }} .
+      working-directory: ./${{ inputs.WORKING_DIR }}
+
+    - name: Push Docker image to GitHub Packages
+      run: |
+        docker push ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ inputs.BRANCH_NAME }}
