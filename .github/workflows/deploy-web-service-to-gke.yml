@@ -27,10 +27,10 @@ on:
         description: "The GCP project ID"
         required: true
         type: string
+    secrets:    
       ghcr_pat:
         description: "The GitHub Container Registry PAT"
         required: true
-        type: string
  
 env:
   BRANCH_NAME: ''        
