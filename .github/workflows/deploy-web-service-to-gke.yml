@@ -1,0 +1,119 @@
+name: Deploy Webservice to GKE
+
+on:
+  workflow_call:
+    inputs:
+      k8s_namespace:
+        description: "The namespace to deploy to"
+        required: true
+        type: string
+      k8s_service_name:
+        description: "The name of the Kubernetes service"
+        required: true
+        type: string
+      app_name:
+        description: "The name of the application"
+        required: true
+        type: string
+      gke_cluster_name:
+        description: "The GKE cluster name"
+        required: true
+        type: string
+      gke_cluster_zone:
+        description: "The GKE cluster zone"
+        required: true
+        type: string
+      gcp_project_id:
+        description: "The GCP project ID"
+        required: true
+        type: string
+      ghcr_pat:
+        description: "The GitHub Container Registry PAT"
+        required: true
+        type: string
+ 
+env:
+  BRANCH_NAME: ''        
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Call composite action to extract branch name
+      id: extract-branch-name
+      uses: david-gimelle/lab/.github/actions/extract-branch-name@main
+
+    - name: Set branch name from composite action
+      run: echo "BRANCH_NAME=${{ steps.extract-branch-name.outputs.branch_name }}" >> $GITHUB_ENV  
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        version: 'latest'
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        gcloud components install gke-gcloud-auth-plugin
+
+    - name: Configure kubectl
+      env:
+        USE_GKE_GCLOUD_AUTH_PLUGIN: "True"
+      run: |
+        gcloud container clusters get-credentials ${{ inputs.gke_cluster_name }} --zone ${{ inputs.gke_cluster_zone }} --project ${{ inputs.gcp_project_id }}
+
+    - name: Create Kubernetes namespace
+      run: |
+        kubectl create namespace ${{ inputs.k8s_namespace }} || true
+    
+    - name: Delete existing Docker registry secret if it exists
+      run: |
+          kubectl delete secret ghcr-secret --namespace=${{ inputs.k8s_namespace }} || echo "Secret does not exist"
+  
+    - name: Create Docker registry secret
+      run: |
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ inputs.ghcr_pat }} \
+            --docker-email=${{ github.actor }}@users.noreply.github.com \
+            --namespace=${{ inputs.k8s_namespace }}
+
+    - name: Apply Kubernetes manifests
+      run: |
+        kubectl apply -f k8s/test/${{ inputs.app_name }}.yml
+
+    - name: Display full image name
+      run: echo "Full image name ghcr.io/${{ github.repository }}/${{ inputs.app_name }}:${{ env.BRANCH_NAME }}"
+
+    - name: Deploy to GKE
+      run: |
+        kubectl set image deployment/${{ inputs.app_name }} ${{ inputs.app_name }}=ghcr.io/${{ github.repository }}/${{ inputs.app_name }}:${{ env.BRANCH_NAME }} --namespace ${{ inputs.k8s_namespace }}
+
+    - name: Check Deployment Status
+      run: |
+        kubectl rollout status deployment/${{ inputs.app_name }} --namespace ${{ inputs.k8s_namespace }}
+
+    - name: Wait for Service to be Ready
+      run: |
+        sleep 10
+    
+    - name: Ping Endpoint
+      run: |
+          EXTERNAL_IP=$(kubectl get service ${{ inputs.k8s_service_name }} --namespace=${{ inputs.k8s_namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "External IP: $EXTERNAL_IP"
+          curl --fail http://$EXTERNAL_IP:8282/ping
+      
+    - name: Check Health Endpoint
+      run: |
+          EXTERNAL_IP=$(kubectl get service ${{ inputs.k8s_service_name }} --namespace=${{ inputs.k8s_namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "External IP: $EXTERNAL_IP"
+          curl --fail http://$EXTERNAL_IP:8282/health
