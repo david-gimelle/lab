@@ -61,7 +61,7 @@ jobs:
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v1
       with:
-        credentials_json: ${{ inputs }}
+        credentials_json: ${{ secrets.gcp_sa_key }}
 
     - name: Install gke-gcloud-auth-plugin
       run: |
