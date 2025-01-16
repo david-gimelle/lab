@@ -31,6 +31,9 @@ on:
       ghcr_pat:
         description: "The GitHub Container Registry PAT"
         required: true
+      gcp_sa_key:
+        description: "GCP Service Account Key"
+        required: true
  
 env:
   BRANCH_NAME: ''        
@@ -58,7 +61,7 @@ jobs:
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v1
       with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        credentials_json: ${{ inputs }}
 
     - name: Install gke-gcloud-auth-plugin
       run: |
