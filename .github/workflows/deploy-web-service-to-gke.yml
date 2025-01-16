@@ -86,7 +86,7 @@ jobs:
           kubectl create secret docker-registry ghcr-secret \
             --docker-server=ghcr.io \
             --docker-username=${{ github.actor }} \
-            --docker-password=${{ inputs.ghcr_pat }} \
+            --docker-password=${{ secrets.ghcr_pat }} \
             --docker-email=${{ github.actor }}@users.noreply.github.com \
             --namespace=${{ inputs.k8s_namespace }}
 
