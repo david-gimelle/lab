@@ -15,6 +15,10 @@ on:
         description: "The name of the application"
         required: true
         type: string
+      port:
+        description: 'Port number for the service'
+        required: true
+        type: string
       gke_cluster_name:
         description: "The GKE cluster name"
         required: true
@@ -113,10 +117,14 @@ jobs:
       run: |
           EXTERNAL_IP=$(kubectl get service ${{ inputs.k8s_service_name }} --namespace=${{ inputs.k8s_namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           echo "External IP: $EXTERNAL_IP"
-          curl --fail http://$EXTERNAL_IP:8282/ping
+          if [ -z "$EXTERNAL_IP" ]; then
+            echo "External IP not returned, maybe it has not been created yet. Try to run this failing workflow again"
+            exit 1
+          fi
+          curl --fail http://$EXTERNAL_IP:${{ inputs.port }}/ping
       
     - name: Check Health Endpoint
       run: |
           EXTERNAL_IP=$(kubectl get service ${{ inputs.k8s_service_name }} --namespace=${{ inputs.k8s_namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           echo "External IP: $EXTERNAL_IP"
-          curl --fail http://$EXTERNAL_IP:8282/health
+          curl --fail http://$EXTERNAL_IP:${{ inputs.port }}/health
