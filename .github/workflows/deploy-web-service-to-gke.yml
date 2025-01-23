@@ -113,6 +113,10 @@ jobs:
       run: |
           EXTERNAL_IP=$(kubectl get service ${{ inputs.k8s_service_name }} --namespace=${{ inputs.k8s_namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           echo "External IP: $EXTERNAL_IP"
+          if [ -z "$EXTERNAL_IP" ]; then
+            echo "External IP not returned, maybe it has not been created yet. Try to run this failing workflow again"
+            exit 1
+          fi
           curl --fail http://$EXTERNAL_IP:8282/ping
       
     - name: Check Health Endpoint
