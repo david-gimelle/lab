@@ -103,11 +103,20 @@ jobs:
 
     - name: Deploy to GKE
       run: |
-        kubectl set image deployment/${{ inputs.app_name }} ${{ inputs.app_name }}=ghcr.io/${{ github.repository }}/${{ inputs.app_name }}:${{ env.BRANCH_NAME }} --namespace ${{ inputs.k8s_namespace }}
+        if kubectl get pods -l app=${{ inputs.app_name }} --namespace ${{ inputs.k8s_namespace }} --no-headers 2>/dev/null; then
+          echo "Existing pods found, deleting them..."
+          kubectl delete pods -l app=${{ inputs.app_name }} --namespace ${{ inputs.k8s_namespace }}
+        else
+          echo "No existing pods found, proceeding with deployment..."
+        fi
 
+        kubectl set image deployment/${{ inputs.app_name }} ${{ inputs.app_name }}=ghcr.io/${{ github.repository }}/${{ inputs.app_name }}:${{ env.BRANCH_NAME }} --namespace ${{ inputs.k8s_namespace }}
+    
     - name: Check Deployment Status
       run: |
         kubectl rollout status deployment/${{ inputs.app_name }} --namespace ${{ inputs.k8s_namespace }}
+        
+        kubectl describe deployment ${{ inputs.app_name }} --namespace ${{ inputs.k8s_namespace }} | grep Image
 
     - name: Wait for Service to be Ready
       run: |
