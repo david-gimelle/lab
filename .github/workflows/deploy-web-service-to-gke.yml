@@ -108,6 +108,8 @@ jobs:
     - name: Check Deployment Status
       run: |
         kubectl rollout status deployment/${{ inputs.app_name }} --namespace ${{ inputs.k8s_namespace }}
+        
+        kubectl describe deployment ${{ inputs.app_name }} --namespace ${{ inputs.k8s_namespace }} | grep Image
 
     - name: Wait for Service to be Ready
       run: |
