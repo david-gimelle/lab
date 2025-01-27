@@ -9,6 +9,10 @@ on:
       WORKING_DIR:
         required: true
         type: string
+    outputs:
+      timestamp:
+        description: 'Build timestamp'
+        value: ${{ jobs.build-image-push.outputs.timestamp }}    
     secrets:
       GHCR_PAT:
         required: true
@@ -16,6 +20,8 @@ on:
 jobs:
   build-image-push:
     runs-on: ubuntu-latest
+    outputs:
+      timestamp: ${{ steps.set-timestamp.outputs.timestamp }}
 
     env:
       BRANCH_NAME: ""
@@ -31,6 +37,15 @@ jobs:
       - name: Set branch name from composite action
         run: echo "BRANCH_NAME=${{ steps.extract-branch-name.outputs.branch_name }}" >> $GITHUB_ENV
 
+      - name: Set timestamp
+        id: set-timestamp
+        run: |
+          echo "TIMESTAMP=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
+          echo "timestamp=${{ env.TIMESTAMP }}" >> $GITHUB_OUTPUT
+    
+      - name: Display timestamp
+        run: echo "Build timestamp is ${{ steps.set-timestamp.outputs.timestamp }}"
+       
       - name: Display branch name from composite action
         run: echo "Branch name is ${{ env.BRANCH_NAME }}"
 
@@ -44,16 +59,16 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }} .
+          docker build -t ${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}-${{ env.TIMESTAMP }} .
         working-directory: ./${{ inputs.WORKING_DIR }}
 
       - name: Tag Docker image
         run: |
-          docker tag ${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }} ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}
+          docker tag ${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}-${{ env.TIMESTAMP }} ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}-${{ env.TIMESTAMP }}
 
       - name: Cleanup dangling images
-        run: docker image prune -f     
+        run: docker image prune -f
 
-      - name: Push Docker image to GitHub Packages
+      - name: Push Docker image
         run: |
-          docker push ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}
+          docker push ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}-${{ env.TIMESTAMP }}
