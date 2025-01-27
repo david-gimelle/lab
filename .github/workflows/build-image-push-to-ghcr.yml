@@ -9,6 +9,10 @@ on:
       WORKING_DIR:
         required: true
         type: string
+      timestamp:
+        description: "Timestamp for image tag (optional)"
+        required: false
+        type: string  
     secrets:
       GHCR_PAT:
         required: true
@@ -30,7 +34,7 @@ jobs:
 
       - name: Set branch name from composite action
         run: echo "BRANCH_NAME=${{ steps.extract-branch-name.outputs.branch_name }}" >> $GITHUB_ENV
-
+       
       - name: Display branch name from composite action
         run: echo "Branch name is ${{ env.BRANCH_NAME }}"
 
@@ -44,16 +48,16 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }} .
+          docker build -t ${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}-${{ inputs.timestamp }} .
         working-directory: ./${{ inputs.WORKING_DIR }}
 
       - name: Tag Docker image
         run: |
-          docker tag ${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }} ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}
+          docker tag ${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}-${{ inputs.timestamp }} ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}-${{ inputs.timestamp }}
 
       - name: Cleanup dangling images
-        run: docker image prune -f     
+        run: docker image prune -f
 
-      - name: Push Docker image to GitHub Packages
+      - name: Push Docker image
         run: |
-          docker push ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}
+          docker push ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}-${{ inputs.timestamp }}

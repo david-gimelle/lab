@@ -31,6 +31,10 @@ on:
         description: "The GCP project ID"
         required: true
         type: string
+      timestamp:
+        description: "Timestamp for image tag (optional)"
+        required: false
+        type: string
     secrets:    
       ghcr_pat:
         description: "The GitHub Container Registry PAT"
@@ -99,13 +103,13 @@ jobs:
         kubectl apply -f k8s/test/${{ inputs.app_name }}.yml
 
     - name: Display full image name
-      run: echo "Full image name ghcr.io/${{ github.repository }}/${{ inputs.app_name }}:${{ env.BRANCH_NAME }}"
+      run: echo "Full image name ghcr.io/${{ github.repository }}/${{ inputs.app_name }}:${{ env.BRANCH_NAME }}-${{ inputs.timestamp }}"
 
     - name: Deploy to GKE
       run: 
         kubectl patch deployment ${{ inputs.app_name }} -n ${{ inputs.k8s_namespace }} -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"kubectl.kubernetes.io/restartedAt\":\"$(date +%s)\"}}}}}"
 
-        kubectl set image deployment/${{ inputs.app_name }} ${{ inputs.app_name }}=ghcr.io/${{ github.repository }}/${{ inputs.app_name }}:${{ env.BRANCH_NAME }} --namespace ${{ inputs.k8s_namespace }}
+        kubectl set image deployment/${{ inputs.app_name }} ${{ inputs.app_name }}=ghcr.io/${{ github.repository }}/${{ inputs.app_name }}:${{ env.BRANCH_NAME }}-${{ inputs.timestamp }} --namespace ${{ inputs.k8s_namespace }}
 
         echo "Checking deployed image version..."
         kubectl get deployment ${{ inputs.app_name }} -n ${{ inputs.k8s_namespace }} -o jsonpath='{.spec.template.spec.containers[0].image}'
