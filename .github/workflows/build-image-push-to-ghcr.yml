@@ -51,6 +51,9 @@ jobs:
         run: |
           docker tag ${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }} ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}
 
+      - name: Cleanup dangling images
+        run: docker image prune -f     
+
       - name: Push Docker image to GitHub Packages
         run: |
           docker push ghcr.io/${{ github.repository }}/${{ inputs.APP_NAME }}:${{ env.BRANCH_NAME }}
