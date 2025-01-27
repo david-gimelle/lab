@@ -102,15 +102,13 @@ jobs:
       run: echo "Full image name ghcr.io/${{ github.repository }}/${{ inputs.app_name }}:${{ env.BRANCH_NAME }}"
 
     - name: Deploy to GKE
-      run: |
-        if kubectl get pods -l app=${{ inputs.app_name }} --namespace ${{ inputs.k8s_namespace }} --no-headers 2>/dev/null; then
-          echo "Existing pods found, deleting them..."
-          kubectl delete pods -l app=${{ inputs.app_name }} --namespace ${{ inputs.k8s_namespace }}
-        else
-          echo "No existing pods found, proceeding with deployment..."
-        fi
+      run: 
+        kubectl patch deployment ${{ inputs.app_name }} -n ${{ inputs.k8s_namespace }} -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"kubectl.kubernetes.io/restartedAt\":\"$(date +%s)\"}}}}}"
 
         kubectl set image deployment/${{ inputs.app_name }} ${{ inputs.app_name }}=ghcr.io/${{ github.repository }}/${{ inputs.app_name }}:${{ env.BRANCH_NAME }} --namespace ${{ inputs.k8s_namespace }}
+
+        echo "Checking deployed image version..."
+        kubectl get deployment ${{ inputs.app_name }} -n ${{ inputs.k8s_namespace }} -o jsonpath='{.spec.template.spec.containers[0].image}'
     
     - name: Check Deployment Status
       run: |
